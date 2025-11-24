@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, Boolean, DateTime
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 def utcnow():
   return datetime.now(timezone.utc)

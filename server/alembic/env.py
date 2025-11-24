@@ -5,7 +5,8 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.core.settings import Settings
-from app.modules.user.model import Base
+from app.db.mixin import Base
+# import app.db.base  # noqa: F401 ensures all models register with Base metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

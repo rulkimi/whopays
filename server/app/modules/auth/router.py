@@ -37,9 +37,9 @@ def login_user(
       code=status.HTTP_401_UNAUTHORIZED
     )
     
-  return APIResponse.success(
-    message="User logged in successfully",
-    data=login_data,
-    code=status.HTTP_200_OK
-  )
-  
+  # return APIResponse.success(
+  #   message="User logged in successfully",
+  #   data=login_data,
+  #   code=status.HTTP_200_OK
+  # )
+  return {**login_data}

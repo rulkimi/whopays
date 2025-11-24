@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from uuid import UUID
 
 class UserBase(BaseModel):
+  username: str
   name: str
   email: str
 

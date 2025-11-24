@@ -22,11 +22,13 @@ class AuthService:
     return new_user
 
   def login(self, login_form_data: OAuth2PasswordRequestForm = Depends()):
-    user = self.db.query(User).filter(User.email == login_form_data.username).first()
+    user = self.db.query(User).filter(
+        (User.email == login_form_data.username) | (User.username == login_form_data.username)
+    ).first()
     if not user or not verify_password(login_form_data.password, user.password):
       return None
     
-    token = create_access_token({"sub": str(user.id), "email": user.email})
+    token = create_access_token({"sub": str(user.id)})
     user_json = UserRead.model_validate(user).model_dump()
     return {"user": user_json, **token}
 

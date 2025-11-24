@@ -1,18 +1,15 @@
 from sqlalchemy import Column, String
 from sqlalchemy.orm import Mapped, relationship
-from app.db.association import user_friend
 from app.db.common_annotations import uuid4pk, name
 from app.db.mixin import Base, Mixin
-from app.modules.friend.model import Friend
+from app.db.association import user_friend
 
-class User(Base, Mixin):
-	__tablename__ = "user"
+class Friend(Base, Mixin):
+	__tablename__ = "friend"
 
 	id: Mapped[uuid4pk]
 	name: Mapped[name]
 	username = Column(String(30), unique=True, index=True, nullable=False)
-	email = Column(String, unique=True, index=True, nullable=False)
-	password = Column(String, nullable=False)
 	photo_url = Column(String, nullable=True)
 
-	friends = relationship("Friend", secondary=user_friend, back_populates="users")
+	users = relationship("User", secondary=user_friend, back_populates="friends")
