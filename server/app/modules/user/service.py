@@ -13,7 +13,7 @@ class UserService:
   def list(self, **filters):
     return self.db.query(User).filter_by(**filters).first()
 
-  def register(self, user_data: UserCreate):
+  def create(self, user_data: UserCreate):
     user = self.list(email=user_data.email)
     if user:
       return None
