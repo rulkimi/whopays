@@ -9,7 +9,9 @@ class Friend(Base, Mixin):
 
 	id: Mapped[uuid4pk]
 	name: Mapped[name]
+	email = Column(String, unique=True, index=True, nullable=False)
 	username = Column(String(30), unique=True, index=True, nullable=False)
 	photo_url = Column(String, nullable=True)
+	status = Column(String(16), default="pending", nullable=False, index=True)
 
 	users = relationship("User", secondary=user_friend, back_populates="friends")

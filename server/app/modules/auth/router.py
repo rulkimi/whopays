@@ -23,7 +23,7 @@ def register_user(
     message="User registered successfully",
     data=new_user,
     code=status.HTTP_201_CREATED
-)
+  )
 
 @router.post("/login")
 def login_user(
