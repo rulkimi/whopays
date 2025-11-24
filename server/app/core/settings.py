@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
   JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
   JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
+  JWT_EXPIRY_MINUTES: str = os.getenv("JWT_EXPIRY_MINUTES")
 
   @property
   def DATABASE_URL(self) -> str:
