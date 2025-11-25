@@ -34,7 +34,7 @@ def add_friend(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend = friend_service.add(user_id=current_user.id, username=username)
+  friend = friend_service.add(user=current_user, username=username)
   return APIResponse.success(
     message="Friend added successfully.",
     data=friend
@@ -47,7 +47,7 @@ def create_friend(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend = friend_service.create(user_id=current_user.id, friend_data=friend_data, profile_photo=profile_photo)
+  friend = friend_service.create(user=current_user, friend_data=friend_data, profile_photo=profile_photo)
   return APIResponse.success(
     message="Friend created successfully.",
     data=friend
