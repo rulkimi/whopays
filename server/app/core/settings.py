@@ -13,6 +13,15 @@ class Settings(BaseSettings):
   JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
   JWT_EXPIRY_MINUTES: str = os.getenv("JWT_EXPIRY_MINUTES")
 
+  MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
+  MINIO_PUBLIC_ENDPOINT: str = os.getenv("MINIO_PUBLIC_ENDPOINT")
+  MINIO_ACCESS_KEY: str = os.getenv("MINIO_ACCESS_KEY")
+  MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY")
+  MINIO_SECURE: str = os.getenv("MINIO_SECURE")
+  MINIO_BUCKET: str = os.getenv("MINIO_BUCKET")
+  MINIO_API_PORT: str = os.getenv("MINIO_API_PORT")
+  MINIO_CONSOLE_PORT: str = os.getenv("MINIO_CONSOLE_PORT")
+
   @property
   def DATABASE_URL(self) -> str:
     url = f"{self.DB_DRIVER}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

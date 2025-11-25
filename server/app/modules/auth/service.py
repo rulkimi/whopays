@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -12,9 +12,9 @@ class AuthService:
   def __init__(self, db: Session):
     self.db = db
   
-  def register(self, user_data: UserCreate):
+  def register(self, user_data: UserCreate, profile_photo: UploadFile = None):
     user_service = get_user_service(self.db)
-    new_user = user_service.create(user_data=user_data)
+    new_user = user_service.create(user_data=user_data, profile_photo=profile_photo)
 
     if not new_user:
       return None

@@ -16,6 +16,17 @@ def get_friends(
     data=friends
   )
 
+@router.get("/requests")
+def get_friend_requests(
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friends = friend_service.list_requests(user_id=current_user.id)
+  return APIResponse.success(
+    message="Fetched friends successfully.",
+    data=friends
+  )
+
 @router.post("/add")
 def add_friend(
   username: str,

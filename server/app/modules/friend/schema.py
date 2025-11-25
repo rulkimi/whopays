@@ -8,5 +8,7 @@ class FriendAdd(BaseModel):
 
 class FriendRead(UserRead):
   status: str
+  photo_url: str
+  friend_user_id: UUID
   class Config:
     from_attributes = True

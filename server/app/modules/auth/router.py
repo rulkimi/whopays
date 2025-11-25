@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.responses import APIResponse
@@ -9,10 +9,11 @@ router = APIRouter()
 
 @router.post("/register")
 def register_user(
-	user_data: UserCreate,
+	user_data: UserCreate = Depends(UserCreate),
+  profile_photo: UploadFile = None,
 	auth_service: AuthService = Depends(get_auth_service)
 ):
-  new_user = auth_service.register(user_data=user_data)
+  new_user = auth_service.register(user_data=user_data, profile_photo=profile_photo)
   if not new_user:
     return APIResponse.error(
       message=f"User with email {user_data.email} already exists.",

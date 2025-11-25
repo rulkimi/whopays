@@ -17,12 +17,31 @@ class FriendService:
 	def list(self, user_id: UUID):
 		friends = (
 			self.db.query(Friend)
-			.join(user_friend, Friend.id == user_friend.c.friend_id)
+			.join(user_friend, Friend.friend_user_id == user_friend.c.friend_id)
 			.filter(user_friend.c.user_id == user_id)
 			.all()
 		)
 		friends_json = [FriendRead.model_validate(friend).model_dump() for friend in friends]
 		return friends_json
+
+	def list_requests(self, user_id: UUID):
+		users = (
+			self.db.query(User)
+			.join(user_friend, User.id == user_friend.c.user_id)
+			.filter(user_friend.c.friend_id == user_id)
+			.all()
+		)
+		return [
+			{
+				"id": user.id,
+				"name": user.name,
+				"email": user.email,
+				"username": user.username,
+				"photo_url": getattr(user, "photo_url", None),
+				"status": "incoming"
+			}
+			for user in users
+		]
 	
 	def add(self, user_id: UUID, username: str):
 		user_service = get_user_service(self.db)
@@ -37,6 +56,7 @@ class FriendService:
 		friend = self.db.query(Friend).filter_by(username=username).first()
 		if not friend:
 			friend = Friend(
+        friend_user_id=friend_user.id,
 				name=friend_user.name,
 				email=friend_user.email,
 				username=friend_user.username,

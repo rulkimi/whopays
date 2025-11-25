@@ -1,3 +1,4 @@
+from fastapi import Body, UploadFile
 from pydantic import BaseModel
 from uuid import UUID
 
@@ -11,6 +12,7 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
   id: UUID
+  photo_url: str
 
   class Config:
     from_attributes = True
