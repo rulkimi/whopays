@@ -5,6 +5,6 @@ user_friend = Table(
 	"user_friend",
 	Base.metadata,
 	Column("user_id", ForeignKey("user.id"), primary_key=True),
-	Column("friend_id", ForeignKey("friend.friend_user_id"), primary_key=True),
+	Column("friend_id", ForeignKey("friend.id"), primary_key=True),
 	Column("status", String(20), nullable=False, default="pending"),
 )

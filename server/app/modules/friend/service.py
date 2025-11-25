@@ -2,7 +2,6 @@ from uuid import UUID
 from fastapi import Depends, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
-from uuid import uuid4
 
 from app.dependencies.database import get_db
 from app.dependencies.file import get_file_service
@@ -28,10 +27,11 @@ class FriendService:
 		return friends_json
 
 	def list_requests(self, user_id: UUID):
+		current_user_friend_id = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id)
 		users = (
 			self.db.query(User)
 			.join(user_friend, User.id == user_friend.c.user_id)
-			.filter(user_friend.c.friend_id == user_id)
+			.filter(user_friend.c.friend_id == current_user_friend_id)
 			.all()
 		)
 		return [
