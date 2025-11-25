@@ -31,15 +31,16 @@ class FriendService:
 		return friends_json
 
 	def list_requests(self, user_id: UUID):
-		current_user_friend_id = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id)
-		users = (
+		# Incoming requests: other users who sent requests to this user (user_id is their friend_id)
+		incoming_friend_ids_subquery = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id).subquery()
+		incoming_users = (
 			self.db.query(User)
 			.join(user_friend, User.id == user_friend.c.user_id)
-			.filter(user_friend.c.friend_id == current_user_friend_id)
+			.filter(user_friend.c.friend_id.in_(incoming_friend_ids_subquery))
 			.filter(user_friend.c.status == "pending")
 			.all()
 		)
-		return [
+		incoming = [
 			{
 				"id": user.id,
 				"name": user.name,
@@ -48,8 +49,30 @@ class FriendService:
 				"photo_url": getattr(user, "photo_url", None),
 				"status": "incoming"
 			}
-			for user in users
+			for user in incoming_users
 		]
+
+		# Outgoing requests: requests sent from this user
+		outgoing_friends = (
+			self.db.query(Friend)
+			.join(user_friend, Friend.id == user_friend.c.friend_id)
+			.filter(user_friend.c.user_id == user_id)
+			.filter(user_friend.c.status == "pending")
+			.all()
+		)
+		outgoing = [
+			{
+				"id": friend.friend_user_id,
+				"name": friend.name,
+				"email": friend.email,
+				"username": friend.username,
+				"photo_url": getattr(friend, "photo_url", None),
+				"status": "outgoing"
+			}
+			for friend in outgoing_friends
+		]
+
+		return incoming + outgoing
 	
 	def add(self, user, username: str):
 		user_service = get_user_service(self.db)
