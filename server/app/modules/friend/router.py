@@ -41,6 +41,18 @@ def accept_friend_request(
     data=friend
   )
 
+@router.post("/reject-request/{friend_id}")
+def reject_friend_request(
+  friend_id: UUID,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend_service.reject_friend_request(user_id=current_user.id, friend_id=friend_id)
+  return APIResponse.success(
+    message="Friend request rejected successfully.",
+    data=None
+  )
+
 @router.post("/add")
 def add_friend(
   username: str,

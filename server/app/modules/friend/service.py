@@ -197,6 +197,17 @@ class FriendService:
 		self.db.commit()
 
 		return UserRead.model_validate(friend_user).model_dump()
+	
+	def reject_friend_request(self, user_id, friend_id):
+		current_user_friend = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id).first()
+		current_user_friend_id = current_user_friend[0] if current_user_friend is not None else None
+		if current_user_friend_id is not None:
+			self.db.execute(
+				user_friend.delete().where(
+					(user_friend.c.user_id == friend_id) & (user_friend.c.friend_id == current_user_friend_id)
+				)
+			)
+			self.db.commit()
 
 def get_friend_service(db: Session = Depends(get_db)):
   return FriendService(db)
