@@ -2,8 +2,10 @@ from uuid import UUID
 import uuid
 from fastapi import Depends, UploadFile
 from sqlalchemy.orm import Session
-from sqlalchemy import insert
+from sqlalchemy import insert, update
+from sqlalchemy import update
 
+from app.db.association import user_friend
 from app.dependencies.database import get_db
 from app.dependencies.file import get_file_service
 from app.modules.friend.model import Friend
@@ -22,6 +24,7 @@ class FriendService:
 			self.db.query(Friend)
 			.join(user_friend, (Friend.friend_user_id == user_friend.c.friend_id) | (Friend.id == user_friend.c.friend_id))
 			.filter(user_friend.c.user_id == user_id)
+			.filter(user_friend.c.status == "accepted")
 			.all()
 		)
 		friends_json = [FriendRead.model_validate(friend).model_dump() for friend in friends]
@@ -33,6 +36,7 @@ class FriendService:
 			self.db.query(User)
 			.join(user_friend, User.id == user_friend.c.user_id)
 			.filter(user_friend.c.friend_id == current_user_friend_id)
+			.filter(user_friend.c.status == "pending")
 			.all()
 		)
 		return [
@@ -96,6 +100,80 @@ class FriendService:
 			self.db.commit()
 
 		return FriendRead.model_validate(friend).model_dump()
+	
+	def accept_friend_request(self, user, friend_id: UUID):
+		friend_user = self.db.query(User).filter(User.id == friend_id).first()
+		if not friend_user:
+			raise ValueError("User not found.")
+
+		friend_record = self.db.query(Friend).filter(Friend.friend_user_id == friend_id).first()
+		if not friend_record:
+			friend_record = Friend(
+				friend_user_id=friend_id,
+				name=friend_user.name,
+				email=friend_user.email,
+				username=friend_user.username,
+				photo_url=getattr(friend_user, "photo_url", None),
+			)
+			self.db.add(friend_record)
+			self.db.commit()
+			self.db.refresh(friend_record)
+
+		my_friend_record = self.db.query(Friend).filter(Friend.friend_user_id == user.id).first()
+		if not my_friend_record:
+			my_friend_record = Friend(
+				friend_user_id=user.id,
+				name=getattr(user, "name", None),
+				email=getattr(user, "email", None),
+				username=getattr(user, "username", None),
+				photo_url=getattr(user, "photo_url", None),
+			)
+			self.db.add(my_friend_record)
+			self.db.commit()
+			self.db.refresh(my_friend_record)
+
+		res1 = self.db.execute(
+			update(user_friend)
+				.where(
+					user_friend.c.user_id == user.id,
+					user_friend.c.friend_id == friend_record.id
+				)
+				.values(status="accepted")
+		)
+		if res1.rowcount == 0:
+			self.db.execute(
+				insert(user_friend)
+					.values(
+						user_id=user.id,
+						friend_id=friend_record.id,
+						status="accepted"
+					)
+			)
+
+		if friend_record not in user.friends:
+			user.friends.append(friend_record)
+
+		res2 = self.db.execute(
+			update(user_friend)
+				.where(
+					user_friend.c.user_id == friend_id,
+					user_friend.c.friend_id == my_friend_record.id
+				)
+				.values(status="accepted")
+		)
+		if res2.rowcount == 0:
+			self.db.execute(
+				insert(user_friend)
+					.values(
+						user_id=friend_id,
+						friend_id=my_friend_record.id,
+						status="accepted"
+					)
+			)
+
+		self.db.commit()
+
+		return UserRead.model_validate(friend_user).model_dump()
 
 def get_friend_service(db: Session = Depends(get_db)):
   return FriendService(db)

@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile
 from app.core.responses import APIResponse
 from app.dependencies.auth import get_current_user
@@ -26,6 +27,18 @@ def get_friend_requests(
   return APIResponse.success(
     message="Fetched friends successfully.",
     data=friends
+  )
+
+@router.post("/accept-request/{friend_id}")
+def accept_friend_request(
+  friend_id: UUID,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend = friend_service.accept_friend_request(user=current_user, friend_id=friend_id)
+  return APIResponse.success(
+    message="Friend request accepted successfully.",
+    data=friend
   )
 
 @router.post("/add")
