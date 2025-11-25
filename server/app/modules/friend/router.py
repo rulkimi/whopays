@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from app.core.responses import APIResponse
 from app.dependencies.auth import get_current_user
+from app.modules.friend.schema import FriendCreate
 from app.modules.friend.service import FriendService, get_friend_service
 
 router = APIRouter()
@@ -36,5 +37,18 @@ def add_friend(
   friend = friend_service.add(user_id=current_user.id, username=username)
   return APIResponse.success(
     message="Friend added successfully.",
+    data=friend
+  )
+
+@router.post("/create")
+def create_friend(
+  friend_data = Depends(FriendCreate),
+  profile_photo: UploadFile = None,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend = friend_service.create(user_id=current_user.id, friend_data=friend_data, profile_photo=profile_photo)
+  return APIResponse.success(
+    message="Friend created successfully.",
     data=friend
   )

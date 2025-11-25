@@ -1,10 +1,13 @@
 from uuid import UUID
-from fastapi import Depends
+from fastapi import Depends, UploadFile
 from sqlalchemy.orm import Session
+from sqlalchemy import insert
+from uuid import uuid4
 
 from app.dependencies.database import get_db
+from app.dependencies.file import get_file_service
 from app.modules.friend.model import Friend
-from app.modules.friend.schema import FriendRead
+from app.modules.friend.schema import FriendCreate, FriendRead
 from app.modules.user.schema import UserRead
 from app.modules.user.service import get_user_service
 from app.modules.user.model import User
@@ -17,7 +20,7 @@ class FriendService:
 	def list(self, user_id: UUID):
 		friends = (
 			self.db.query(Friend)
-			.join(user_friend, Friend.friend_user_id == user_friend.c.friend_id)
+			.join(user_friend, (Friend.friend_user_id == user_friend.c.friend_id) | (Friend.id == user_friend.c.friend_id))
 			.filter(user_friend.c.user_id == user_id)
 			.all()
 		)
@@ -69,6 +72,45 @@ class FriendService:
 		if friend not in user.friends:
 			user.friends.append(friend)
 			self.db.commit()
+
+		return FriendRead.model_validate(friend).model_dump()
+
+	def create(self, user_id: UUID, friend_data: FriendCreate, profile_photo: UploadFile = None):
+		# This function should also create an association row in the user_friend table.
+		user = self.db.query(User).filter_by(id=user_id).first()
+		if not user:
+			raise ValueError("Current user not found.")
+
+		file_service = get_file_service()
+		photo_url = file_service.upload_file(profile_photo, "friends")
+		# Create a unique username and email for the friend
+		import uuid
+		base_username = friend_data.name.lower().replace(" ", "_")
+		unique_suffix = uuid.uuid4().hex[:8]
+		unique_username = f"friend_{base_username}_{unique_suffix}"
+		unique_email = f"{unique_username}@whopays.com"
+		friend = Friend(
+			friend_user_id=None,
+			name=friend_data.name,
+			username=unique_username,
+			email=None,
+			photo_url=photo_url
+		)
+		self.db.add(friend)
+		self.db.commit()
+		self.db.refresh(friend)
+
+		# --- Add the association in user_friend table ---
+		# Normally, this is handled by the ORM relationship, but we can insert directly if needed.
+		# Here, simulating how you'd add an association row via the association table.
+		self.db.execute(
+			insert(user_friend).values(
+				user_id=user.id, 
+				friend_id=friend.id,   # using friend.id because friend_user_id may be None
+				status="accepted"
+			)
+		)
+		self.db.commit()
 
 		return FriendRead.model_validate(friend).model_dump()
 

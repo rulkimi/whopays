@@ -15,11 +15,10 @@ class Friend(Base, Mixin):
 		ForeignKey("user.id", ondelete="CASCADE"),
 		unique=True,
 		index=True,
-		nullable=False
+		nullable=True
 	)
-	email = Column(String, unique=True, index=True, nullable=False)
+	email = Column(String, nullable=True)
 	username = Column(String(30), unique=True, index=True, nullable=False)
 	photo_url = Column(String, nullable=True)
-	status = Column(String(16), default="pending", nullable=False, index=True)
 
 	users = relationship("User", secondary=user_friend, back_populates="friends")
