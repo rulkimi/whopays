@@ -22,6 +22,8 @@ class Settings(BaseSettings):
   MINIO_API_PORT: str = os.getenv("MINIO_API_PORT")
   MINIO_CONSOLE_PORT: str = os.getenv("MINIO_CONSOLE_PORT")
 
+  GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
+
   @property
   def DATABASE_URL(self) -> str:
     url = f"{self.DB_DRIVER}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

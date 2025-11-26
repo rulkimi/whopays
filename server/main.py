@@ -3,6 +3,7 @@ from app.core.responses import APIResponse, AppException
 from app.modules.auth.router import router as auth_router
 from app.modules.friend.router import router as friend_router
 from app.modules.receipt.router import router as receipt_router
+from app.modules.ai.router import router as ai_router
 
 app = FastAPI()
 
@@ -25,3 +26,4 @@ async def app_exception_handler(request: Request, exc: AppException):
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(friend_router, prefix="/friends", tags=["Friends"])
 app.include_router(receipt_router, prefix="/receipts", tags=["Receipts"])
+app.include_router(ai_router, prefix="/ai", tags=["AI"])

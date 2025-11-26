@@ -10,3 +10,4 @@ python-jose
 alembic
 python-multipart
 minio
+google-genai

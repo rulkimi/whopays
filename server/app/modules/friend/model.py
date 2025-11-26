@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.db.common_annotations import uuid4pk, name
 from app.db.mixin import Base, Mixin
 from sqlalchemy import Enum
-import enum
+from app.modules.friend.schema import ContactType, FriendshipStatus
 
 class ExternalContact(Base, Mixin):
   __tablename__ = "external_contact"
@@ -16,15 +16,6 @@ class ExternalContact(Base, Mixin):
   photo_url = Column(String, nullable=True)
 
   friendships = relationship("Friendship", back_populates="external_contact")
-
-class FriendshipStatus(str, enum.Enum):
-  pending = "pending"
-  accepted = "accepted"
-  rejected = "rejected"
-
-class ContactType(str, enum.Enum):
-  user = "user"
-  external = "external"
 
 class Friendship(Base):
 	__tablename__ = "friendship"
