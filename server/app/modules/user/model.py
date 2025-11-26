@@ -2,6 +2,7 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import Mapped, relationship
 from app.db.common_annotations import uuid4pk, name
 from app.db.mixin import Base, Mixin
+
 class User(Base, Mixin):
 	__tablename__ = "user"
 
@@ -16,4 +17,8 @@ class User(Base, Mixin):
 		"Friendship",
 		back_populates="user",
 		foreign_keys="Friendship.user_id"
+	)
+	receipts = relationship(
+		"Receipt",
+		back_populates="user"
 	)

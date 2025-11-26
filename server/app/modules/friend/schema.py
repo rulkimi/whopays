@@ -13,6 +13,7 @@ class FriendCreate(BaseModel):
 class FriendRead(UserRead):
   photo_url: str
   friend_user_id: Optional[UUID] = None
+  external_contact_id: Optional[UUID] = None
   email: Optional[str] = None
   username: Optional[str] = None
 
