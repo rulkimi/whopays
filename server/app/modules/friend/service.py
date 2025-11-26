@@ -1,19 +1,25 @@
 from uuid import UUID
-import uuid
 from fastapi import Depends, UploadFile
 from sqlalchemy.orm import Session
-from sqlalchemy import insert, update
-from sqlalchemy import update
 
-from app.db.association import user_friend
 from app.dependencies.database import get_db
 from app.dependencies.file import get_file_service
-from app.modules.friend.model import Friend
-from app.modules.friend.schema import FriendCreate, FriendRead
-from app.modules.user.schema import UserRead
 from app.modules.user.service import get_user_service
+from app.modules.user.schema import UserRead
 from app.modules.user.model import User
-from app.db.association import user_friend
+
+from app.modules.friend.model import (
+	ExternalContact,
+	Friendship,
+	FriendshipStatus,
+	ContactType
+)
+from app.modules.friend.schema import (
+	FriendAdd,
+	FriendCreate,
+	FriendRead
+)
+
 
 class FriendService:
 	def __init__(self, db: Session):
@@ -21,193 +27,180 @@ class FriendService:
 
 	def list(self, user_id: UUID):
 		friends = (
-			self.db.query(Friend)
-			.join(user_friend, (Friend.friend_user_id == user_friend.c.friend_id) | (Friend.id == user_friend.c.friend_id))
-			.filter(user_friend.c.user_id == user_id)
-			.filter(user_friend.c.status == "accepted")
+			self.db.query(Friendship)
+			.filter(Friendship.user_id == user_id)
+			.filter(Friendship.status == FriendshipStatus.accepted)
 			.all()
 		)
-		friends_json = [FriendRead.model_validate(friend).model_dump() for friend in friends]
-		return friends_json
+
+		result = []
+		for f in friends:
+			if f.contact_type == ContactType.user:
+				friend = f.friend_user
+			else:
+				friend = f.external_contact
+
+			result.append(FriendRead.model_validate(friend).model_dump())
+
+		return result
 
 	def list_requests(self, user_id: UUID):
-		# Incoming requests: other users who sent requests to this user (user_id is their friend_id)
-		incoming_friend_ids_subquery = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id).subquery()
-		incoming_users = (
-			self.db.query(User)
-			.join(user_friend, User.id == user_friend.c.user_id)
-			.filter(user_friend.c.friend_id.in_(incoming_friend_ids_subquery))
-			.filter(user_friend.c.status == "pending")
+		incoming = (
+			self.db.query(Friendship)
+			.filter(Friendship.friend_user_id == user_id)
+			.filter(Friendship.status == FriendshipStatus.pending)
 			.all()
 		)
-		incoming = [
+
+		outgoing = (
+			self.db.query(Friendship)
+			.filter(Friendship.user_id == user_id)
+			.filter(Friendship.status == FriendshipStatus.pending)
+			.all()
+		)
+
+		incoming_json = [
 			{
-				"id": user.id,
-				"name": user.name,
-				"email": user.email,
-				"username": user.username,
-				"photo_url": getattr(user, "photo_url", None),
+				"id": f.user_id,
+				"name": f.user.name,
+				"username": f.user.username,
+				"photo_url": f.user.photo_url,
 				"status": "incoming"
 			}
-			for user in incoming_users
+			for f in incoming if f.contact_type == ContactType.user
 		]
 
-		# Outgoing requests: requests sent from this user
-		outgoing_friends = (
-			self.db.query(Friend)
-			.join(user_friend, Friend.id == user_friend.c.friend_id)
-			.filter(user_friend.c.user_id == user_id)
-			.filter(user_friend.c.status == "pending")
-			.all()
-		)
-		outgoing = [
-			{
-				"id": friend.friend_user_id,
-				"name": friend.name,
-				"email": friend.email,
-				"username": friend.username,
-				"photo_url": getattr(friend, "photo_url", None),
-				"status": "outgoing"
-			}
-			for friend in outgoing_friends
-		]
+		outgoing_json = []
+		for f in outgoing:
+			if f.contact_type == ContactType.user:
+				target = f.friend_user
+			else:
+				target = f.external_contact
 
-		return incoming + outgoing
-	
-	def add(self, user, username: str):
+			outgoing_json.append(
+				{
+					"id": getattr(target, "id"),
+					"name": getattr(target, "name"),
+					"username": getattr(target, "username", None),
+					"photo_url": getattr(target, "photo_url", None),
+					"status": "outgoing"
+				}
+			)
+
+		return incoming_json + outgoing_json
+
+	def add_user_friend(self, user: User, username: str):
 		user_service = get_user_service(self.db)
 		friend_user = user_service.get_user(username=username)
+
 		if not friend_user:
 			raise ValueError("User not found.")
 
-		friend = self.db.query(Friend).filter_by(username=username).first()
-		if not friend:
-			friend = Friend(
-				friend_user_id=friend_user.id,
-				name=friend_user.name,
-				email=friend_user.email,
-				username=friend_user.username,
-				photo_url=getattr(friend_user, "photo_url", None)
-			)
-			self.db.add(friend)
-			self.db.commit()
-			self.db.refresh(friend)
+		if friend_user.id == user.id:
+			raise ValueError("You cannot add yourself.")
 
-		if friend not in user.friends:
-			user.friends.append(friend)
-			self.db.commit()
+		existing = (
+			self.db.query(Friendship)
+			.filter(Friendship.user_id == user.id)
+			.filter(Friendship.friend_user_id == friend_user.id)
+			.first()
+		)
 
-		return FriendRead.model_validate(friend).model_dump()
+		if existing:
+			return {"message": "Request already exists", "status": existing.status}
 
-	def create(self, user, friend_data: FriendCreate, profile_photo: UploadFile = None):
+		friendship = Friendship(
+			user_id=user.id,
+			contact_type=ContactType.user,
+			friend_user_id=friend_user.id,
+			status=FriendshipStatus.pending
+		)
+
+		self.db.add(friendship)
+		self.db.commit()
+		self.db.refresh(friendship)
+
+		return {
+			"message": "Friend request sent.",
+			"status": "pending"
+		}
+
+	def add_external_contact(self, user: User, data: FriendCreate, profile_photo: UploadFile = None):
 		file_service = get_file_service()
-		photo_url = file_service.upload_file(profile_photo, "friends")
-		
-		base_username = friend_data.name.lower().replace(" ", "_")
-		unique_suffix = uuid.uuid4().hex[:8]
-		unique_username = f"friend_{base_username}_{unique_suffix}"
-		
-		friend = Friend(
-			friend_user_id=None,
-			name=friend_data.name,
-			username=unique_username,
+		photo_url = file_service.upload_file(profile_photo, "external_contacts") if profile_photo else None
+
+		contact = ExternalContact(
+			name=data.name,
 			email=None,
+			phone=None,
 			photo_url=photo_url
 		)
-		self.db.add(friend)
+
+		self.db.add(contact)
 		self.db.commit()
-		self.db.refresh(friend)
+		self.db.refresh(contact)
 
-		if friend not in user.friends:
-			user.friends.append(friend)
-			self.db.commit()
-
-		return FriendRead.model_validate(friend).model_dump()
-	
-	def accept_friend_request(self, user, friend_id: UUID):
-		friend_user = self.db.query(User).filter(User.id == friend_id).first()
-		if not friend_user:
-			raise ValueError("User not found.")
-
-		friend_record = self.db.query(Friend).filter(Friend.friend_user_id == friend_id).first()
-		if not friend_record:
-			friend_record = Friend(
-				friend_user_id=friend_id,
-				name=friend_user.name,
-				email=friend_user.email,
-				username=friend_user.username,
-				photo_url=getattr(friend_user, "photo_url", None),
-			)
-			self.db.add(friend_record)
-			self.db.commit()
-			self.db.refresh(friend_record)
-
-		my_friend_record = self.db.query(Friend).filter(Friend.friend_user_id == user.id).first()
-		if not my_friend_record:
-			my_friend_record = Friend(
-				friend_user_id=user.id,
-				name=getattr(user, "name", None),
-				email=getattr(user, "email", None),
-				username=getattr(user, "username", None),
-				photo_url=getattr(user, "photo_url", None),
-			)
-			self.db.add(my_friend_record)
-			self.db.commit()
-			self.db.refresh(my_friend_record)
-
-		res1 = self.db.execute(
-			update(user_friend)
-				.where(
-					user_friend.c.user_id == user.id,
-					user_friend.c.friend_id == friend_record.id
-				)
-				.values(status="accepted")
+		friendship = Friendship(
+			user_id=user.id,
+			contact_type=ContactType.external,
+			external_contact_id=contact.id,
+			status=FriendshipStatus.accepted  # no approval needed
 		)
-		if res1.rowcount == 0:
-			self.db.execute(
-				insert(user_friend)
-					.values(
-						user_id=user.id,
-						friend_id=friend_record.id,
-						status="accepted"
-					)
-			)
 
-		if friend_record not in user.friends:
-			user.friends.append(friend_record)
+		self.db.add(friendship)
+		self.db.commit()
 
-		res2 = self.db.execute(
-			update(user_friend)
-				.where(
-					user_friend.c.user_id == friend_id,
-					user_friend.c.friend_id == my_friend_record.id
-				)
-				.values(status="accepted")
+		return FriendRead.model_validate(contact).model_dump()
+
+	def accept_friend_request(self, user: User, requester_id: UUID):
+		req = (
+			self.db.query(Friendship)
+			.filter(Friendship.friend_user_id == user.id)
+			.filter(Friendship.user_id == requester_id)
+			.filter(Friendship.status == FriendshipStatus.pending)
+			.first()
 		)
-		if res2.rowcount == 0:
-			self.db.execute(
-				insert(user_friend)
-					.values(
-						user_id=friend_id,
-						friend_id=my_friend_record.id,
-						status="accepted"
-					)
+
+		if not req:
+			raise ValueError("No pending friend request.")
+
+		req.status = FriendshipStatus.accepted
+
+		existing_reverse = (
+			self.db.query(Friendship)
+			.filter(Friendship.user_id == user.id)
+			.filter(Friendship.friend_user_id == requester_id)
+			.first()
+		)
+
+		if not existing_reverse:
+			reverse = Friendship(
+				user_id=user.id,
+				contact_type=ContactType.user,
+				friend_user_id=requester_id,
+				status=FriendshipStatus.accepted
 			)
+			self.db.add(reverse)
 
 		self.db.commit()
 
-		return UserRead.model_validate(friend_user).model_dump()
-	
-	def reject_friend_request(self, user_id, friend_id):
-		current_user_friend = self.db.query(Friend.id).filter(Friend.friend_user_id == user_id).first()
-		current_user_friend_id = current_user_friend[0] if current_user_friend is not None else None
-		if current_user_friend_id is not None:
-			self.db.execute(
-				user_friend.delete().where(
-					(user_friend.c.user_id == friend_id) & (user_friend.c.friend_id == current_user_friend_id)
-				)
-			)
+		friend = self.db.query(User).filter(User.id == requester_id).first()
+		return UserRead.model_validate(friend).model_dump()
+
+	def reject_friend_request(self, user: User, requester_id: UUID):
+		req = (
+			self.db.query(Friendship)
+			.filter(Friendship.friend_user_id == user.id)
+			.filter(Friendship.user_id == requester_id)
+			.first()
+		)
+
+		if req:
+			req.status = FriendshipStatus.rejected
 			self.db.commit()
+
+		return {"message": "Request rejected."}
+
 
 def get_friend_service(db: Session = Depends(get_db)):
-  return FriendService(db)
+	return FriendService(db)

@@ -35,7 +35,7 @@ def accept_friend_request(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend = friend_service.accept_friend_request(user=current_user, friend_id=friend_id)
+  friend = friend_service.accept_friend_request(user=current_user, requester_id=friend_id)
   return APIResponse.success(
     message="Friend request accepted successfully.",
     data=friend
@@ -47,7 +47,7 @@ def reject_friend_request(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend_service.reject_friend_request(user_id=current_user.id, friend_id=friend_id)
+  friend_service.reject_friend_request(user=current_user, requester_id=friend_id)
   return APIResponse.success(
     message="Friend request rejected successfully.",
     data=None
@@ -59,7 +59,7 @@ def add_friend(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend = friend_service.add(user=current_user, username=username)
+  friend = friend_service.add_user_friend(user=current_user, username=username)
   return APIResponse.success(
     message="Friend added successfully.",
     data=friend
@@ -72,7 +72,7 @@ def create_friend(
   friend_service: FriendService = Depends(get_friend_service),
   current_user=Depends(get_current_user)
 ):
-  friend = friend_service.create(user=current_user, friend_data=friend_data, profile_photo=profile_photo)
+  friend = friend_service.add_external_contact(user=current_user, data=friend_data, profile_photo=profile_photo)
   return APIResponse.success(
     message="Friend created successfully.",
     data=friend
