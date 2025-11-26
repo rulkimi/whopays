@@ -65,6 +65,19 @@ def add_friend(
     data=friend
   )
 
+@router.delete("/remove/{friend_id}")
+def remove_friend(
+  friend_id: UUID,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  result = friend_service.remove_friend(user=current_user, friend_user_id=friend_id)
+  return APIResponse.success(
+    message=result.get("message", "Friend removed successfully."),
+    data=None
+  )
+
+
 @router.post("/create")
 def create_friend(
   friend_data = Depends(FriendCreate),

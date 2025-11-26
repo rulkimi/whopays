@@ -200,6 +200,29 @@ class FriendService:
 			self.db.commit()
 
 		return {"message": "Request rejected."}
+  
+	def remove_friend(self, user: User, friend_user_id: UUID):
+		friendships = (
+			self.db.query(Friendship)
+			.filter(
+				(
+					(Friendship.user_id == user.id) & (Friendship.friend_user_id == friend_user_id)
+				) | (
+					(Friendship.user_id == friend_user_id) & (Friendship.friend_user_id == user.id)
+				)
+			)
+			.filter(Friendship.contact_type == ContactType.user)
+			.all()
+		)
+
+		if not friendships:
+			raise ValueError("No such friendship found.")
+
+		for fs in friendships:
+			self.db.delete(fs)
+
+		self.db.commit()
+		return {"message": "Friend removed successfully."}
 
 
 def get_friend_service(db: Session = Depends(get_db)):
