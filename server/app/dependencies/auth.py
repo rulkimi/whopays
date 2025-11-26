@@ -8,7 +8,7 @@ from app.dependencies.database import get_db
 from app.modules.user.model import User
 from app.modules.user.schema import UserRead
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login?swagger_auth=true")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserRead:
   credentials_exception = HTTPException(

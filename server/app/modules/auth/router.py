@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, Query, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.responses import APIResponse
@@ -29,7 +29,8 @@ def register_user(
 @router.post("/login")
 def login_user(
   form_data: OAuth2PasswordRequestForm = Depends(),
-  auth_service: AuthService = Depends(get_auth_service)
+  auth_service: AuthService = Depends(get_auth_service),
+  swagger_auth: bool = Query(False)
 ):
   login_data = auth_service.login(form_data)
   if not login_data:
@@ -37,10 +38,12 @@ def login_user(
       message="Invalid email or password.",
       code=status.HTTP_401_UNAUTHORIZED
     )
-    
-  # return APIResponse.success(
-  #   message="User logged in successfully",
-  #   data=login_data,
-  #   code=status.HTTP_200_OK
-  # )
-  return {**login_data}
+  
+  if swagger_auth:
+    return {**login_data}
+  else:  
+    return APIResponse.success(
+      message="User logged in successfully",
+      data=login_data,
+      code=status.HTTP_200_OK
+    )

@@ -21,5 +21,5 @@ async def app_exception_handler(request: Request, exc: AppException):
     errors=exc.errors
   )
 
-app.include_router(auth_router, prefix="/auth", tags=["auth"])
-app.include_router(friend_router, prefix="/friend", tags=["friend"])
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(friend_router, prefix="/friends", tags=["Friends"])
