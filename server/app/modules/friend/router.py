@@ -17,42 +17,7 @@ def get_friends(
     message="Fetched friends successfully.",
     data=friends
   )
-
-@router.get("/requests")
-def get_friend_requests(
-  friend_service: FriendService = Depends(get_friend_service),
-  current_user=Depends(get_current_user)
-):
-  friends = friend_service.list_requests(user_id=current_user.id)
-  return APIResponse.success(
-    message="Fetched friends successfully.",
-    data=friends
-  )
-
-@router.post("/accept-request/{friend_id}")
-def accept_friend_request(
-  friend_id: UUID,
-  friend_service: FriendService = Depends(get_friend_service),
-  current_user=Depends(get_current_user)
-):
-  friend = friend_service.accept_friend_request(user=current_user, requester_id=friend_id)
-  return APIResponse.success(
-    message="Friend request accepted successfully.",
-    data=friend
-  )
-
-@router.post("/reject-request/{friend_id}")
-def reject_friend_request(
-  friend_id: UUID,
-  friend_service: FriendService = Depends(get_friend_service),
-  current_user=Depends(get_current_user)
-):
-  friend_service.reject_friend_request(user=current_user, requester_id=friend_id)
-  return APIResponse.success(
-    message="Friend request rejected successfully.",
-    data=None
-  )
-
+  
 @router.post("/add")
 def add_friend(
   username: str,
@@ -65,6 +30,54 @@ def add_friend(
     data=friend
   )
 
+@router.post("/create")
+def create_friend(
+  friend_data: FriendCreate = Depends(),
+  profile_photo: UploadFile = None,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend = friend_service.add_external_contact(user=current_user, data=friend_data, profile_photo=profile_photo)
+  return APIResponse.success(
+    message="Friend created successfully.",
+    data=friend
+  )
+
+@router.get("/requests")
+def get_friend_requests(
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friends = friend_service.list_requests(user_id=current_user.id)
+  return APIResponse.success(
+    message="Fetched friends successfully.",
+    data=friends
+  )
+
+@router.post("/requests/accept/{friend_id}")
+def accept_friend_request(
+  friend_id: UUID,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend = friend_service.accept_friend_request(user=current_user, requester_id=friend_id)
+  return APIResponse.success(
+    message="Friend request accepted successfully.",
+    data=friend
+  )
+
+@router.post("/requests/reject/{friend_id}")
+def reject_friend_request(
+  friend_id: UUID,
+  friend_service: FriendService = Depends(get_friend_service),
+  current_user=Depends(get_current_user)
+):
+  friend_service.reject_friend_request(user=current_user, requester_id=friend_id)
+  return APIResponse.success(
+    message="Friend request rejected successfully.",
+    data=None
+  )
+
 @router.delete("/remove/{friend_id}")
 def remove_friend(
   friend_id: UUID,
@@ -75,18 +88,4 @@ def remove_friend(
   return APIResponse.success(
     message=result.get("message", "Friend removed successfully."),
     data=None
-  )
-
-
-@router.post("/create")
-def create_friend(
-  friend_data = Depends(FriendCreate),
-  profile_photo: UploadFile = None,
-  friend_service: FriendService = Depends(get_friend_service),
-  current_user=Depends(get_current_user)
-):
-  friend = friend_service.add_external_contact(user=current_user, data=friend_data, profile_photo=profile_photo)
-  return APIResponse.success(
-    message="Friend created successfully.",
-    data=friend
   )
