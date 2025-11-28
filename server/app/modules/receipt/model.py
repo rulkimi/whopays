@@ -3,7 +3,7 @@ from sqlalchemy import Column, Enum, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, relationship
 from app.db.common_annotations import uuid4pk, name
 from app.db.mixin import Base, Mixin
-from app.modules.receipt.schema import ParticipantType, SplitMethod
+from app.modules.receipt.schema import ParticipantType, SplitMethod, ReceiptStatus
 
 class Receipt(Base, Mixin):
   __tablename__ = "receipt"
@@ -20,6 +20,12 @@ class Receipt(Base, Mixin):
   total_amount = Column(Float, nullable=False)
   receipt_url = Column(String, nullable=True)
   notes = Column(String, nullable=True)
+  status = Column(
+    Enum(ReceiptStatus),
+    nullable=False,
+    default=ReceiptStatus.processing,
+    server_default="processing"
+  )
 
   user_id = Column(
     UUID(as_uuid=True),

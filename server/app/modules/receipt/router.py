@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 from fastapi import APIRouter, Depends, Body, UploadFile, File
 from app.core.responses import APIResponse
@@ -60,19 +61,37 @@ async def extract_receipt(
 	current_user=Depends(get_current_user),
 ):
 	file_service = get_file_service()
+	file_bytes = await receipt_image.read()
+	mime_type = receipt_image.content_type or "image/jpeg"
 	receipt_image.file.seek(0)
 	stored_receipt_key = file_service.upload_file(receipt_image, "receipts")
-	receipt_image.file.seek(0)
 
-	saved_receipt = await ai_service.extract_and_store_receipt(
-		receipt_image=receipt_image,
+	placeholder_receipt = receipt_service.create_placeholder_receipt(
 		user_id=current_user.id,
-		receipt_service=receipt_service,
-		receipt_url=stored_receipt_key
+		receipt_url=stored_receipt_key,
+		filename=receipt_image.filename
 	)
+
+	async def process_receipt():
+		try:
+			await ai_service.extract_and_update_receipt(
+				receipt_id=placeholder_receipt["id"],
+				receipt_bytes=file_bytes,
+				mime_type=mime_type,
+				receipt_service=receipt_service,
+				receipt_url=stored_receipt_key
+			)
+		except Exception as exc:
+			receipt_service.mark_receipt_failed(
+				receipt_id=placeholder_receipt["id"],
+				error_message=str(exc)
+			)
+
+	asyncio.create_task(process_receipt())
+
 	return APIResponse.success(
-		message="Receipt extracted and saved successfully.",
-		data=saved_receipt
+		message="Receipt uploaded. Extraction queued.",
+		data=placeholder_receipt
 	)
 
 @router.put("/{receipt_id}")

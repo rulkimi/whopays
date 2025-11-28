@@ -13,6 +13,11 @@ class SplitMethod(str, Enum):
 	equal = "equal"
 	weighted = "weighted"
 
+class ReceiptStatus(str, Enum):
+	processing = "processing"
+	extracted = "extracted"
+	failed = "failed"
+
 
 # Receipt Item Variations
 class ReceiptItemVariationBase(BaseModel):
@@ -99,6 +104,7 @@ class ReceiptBase(BaseModel):
 	total_amount: float
 	receipt_url: Optional[str] = None
 	notes: Optional[str] = None
+	status: ReceiptStatus = ReceiptStatus.processing
 
 class ReceiptCreate(ReceiptBase):
 	user_id: UUID

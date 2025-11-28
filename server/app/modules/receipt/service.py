@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -20,6 +21,7 @@ from app.modules.receipt.schema import (
 	ReceiptItemFriendCreate,
 	ReceiptItemVariationCreate,
 	ReceiptAIExtracted,
+	ReceiptStatus,
 	ai_extracted_to_receipt_create
 )
 
@@ -59,7 +61,8 @@ class ReceiptService:
 			total_amount=data.total_amount,
 			receipt_url=data.receipt_url,
 			notes=data.notes,
-			user_id=data.user_id
+			user_id=data.user_id,
+			status=data.status or ReceiptStatus.processing
 		)
 
 		self.db.add(receipt)
@@ -81,21 +84,28 @@ class ReceiptService:
 
 		if data.items:
 			for item_data in data.items:
-				item = self._add_item(receipt.id, item_data)
-				self.db.add(item)
+				self._add_item(receipt.id, item_data)
 
 		self.db.commit()
 		self.db.refresh(receipt)
 		return ReceiptRead.model_validate(receipt).model_dump()
 
-	def create_from_ai_extract(self, user_id: UUID, extracted: ReceiptAIExtracted):
-		receipt_payload = ai_extracted_to_receipt_create(
-			extracted=extracted,
-			user_id=user_id
+	def create_placeholder_receipt(self, user_id: UUID, receipt_url: str, filename: Optional[str] = None):
+		"""
+		Creates a minimal receipt entry representing an uploaded file before AI extraction completes.
+		"""
+		placeholder = ReceiptCreate(
+			user_id=user_id,
+			restaurant_name=filename or "Processing Receipt",
+			subtotal=0.0,
+			total_amount=0.0,
+			receipt_url=receipt_url,
+			notes="Receipt uploaded. Extraction in progress.",
+			status=ReceiptStatus.processing
 		)
-		return self.create(data=receipt_payload)
+		return self.create(data=placeholder)
 
-	def _add_item(self, receipt_id: UUID, data: ReceiptItemCreate):
+	def _add_item(self, receipt_id: UUID, data: ReceiptItemCreate, auto_commit: bool = True):
 		item = ReceiptItem(
 			receipt_id=receipt_id,
 			name=data.name,
@@ -105,8 +115,7 @@ class ReceiptService:
 		)
 
 		self.db.add(item)
-		self.db.commit()
-		self.db.refresh(item)
+		self.db.flush()
 
 		if data.variations:
 			for v in data.variations:
@@ -127,6 +136,9 @@ class ReceiptService:
 				)
 				self.db.add(friend)
 
+		if auto_commit:
+			self.db.commit()
+			self.db.refresh(item)
 		return item
 
 	def add_participant(self, receipt_id: UUID, data: ReceiptParticipantCreate):
@@ -210,6 +222,57 @@ class ReceiptService:
 		if updated:
 			self.db.commit()
 			self.db.refresh(receipt)
+		return ReceiptRead.model_validate(receipt).model_dump()
+
+	def finalize_receipt_from_ai(self, receipt_id: UUID, extracted: ReceiptAIExtracted):
+		receipt = self.db.query(Receipt).filter(Receipt.id == receipt_id).first()
+		if not receipt:
+			raise ValueError("Receipt not found")
+
+		payload = ai_extracted_to_receipt_create(
+			extracted=extracted,
+			user_id=receipt.user_id
+		)
+
+		for field in [
+			"restaurant_name",
+			"subtotal",
+			"tax",
+			"service_charge",
+			"tip",
+			"rounding_amount",
+			"discount",
+			"total_amount",
+			"receipt_url",
+			"notes"
+		]:
+			setattr(receipt, field, getattr(payload, field))
+
+		receipt.status = ReceiptStatus.extracted
+
+		for existing_item in list(receipt.items):
+			self.db.delete(existing_item)
+		self.db.flush()
+
+		if payload.items:
+			for item_data in payload.items:
+				self._add_item(receipt.id, item_data, auto_commit=False)
+
+		self.db.commit()
+		self.db.refresh(receipt)
+		return ReceiptRead.model_validate(receipt).model_dump()
+
+	def mark_receipt_failed(self, receipt_id: UUID, error_message: Optional[str] = None):
+		receipt = self.db.query(Receipt).filter(Receipt.id == receipt_id).first()
+		if not receipt:
+			return None
+
+		receipt.status = ReceiptStatus.failed
+		if error_message:
+			note_prefix = f"{receipt.notes}\n" if receipt.notes else ""
+			receipt.notes = f"{note_prefix}Extraction failed: {error_message}"
+		self.db.commit()
+		self.db.refresh(receipt)
 		return ReceiptRead.model_validate(receipt).model_dump()
 
 	def add_item_participant(self, item_id: UUID, data: ReceiptItemFriendCreate):
