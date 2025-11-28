@@ -11,3 +11,4 @@ alembic
 python-multipart
 minio
 google-genai
+pillow

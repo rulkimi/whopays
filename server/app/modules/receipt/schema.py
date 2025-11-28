@@ -113,3 +113,95 @@ class ReceiptRead(ReceiptBase):
 
 	class Config:
 		from_attributes = True
+
+class ReceiptAIExtractedItemVariation(BaseModel):
+	name: str
+	price: Optional[float] = None
+
+class ReceiptAIExtractedItem(BaseModel):
+	name: str
+	price: Optional[float] = None
+	variations: Optional[List[ReceiptAIExtractedItemVariation]] = None
+
+class ReceiptAIExtracted(BaseModel):
+	restaurant_name: Optional[str] = None
+	subtotal: Optional[float] = None
+	tax: Optional[float] = None
+	service_charge: Optional[float] = None
+	tip: Optional[float] = None
+	rounding_amount: Optional[float] = None
+	discount: Optional[float] = None
+	total_amount: Optional[float] = None
+	receipt_url: Optional[str] = None
+	notes: Optional[str] = None
+	items: List[ReceiptAIExtractedItem] = []
+
+	class Config:
+		from_attributes = True
+
+
+def _safe_float(value: Optional[float], default: float = 0.0) -> float:
+	return float(value) if value is not None else float(default)
+
+
+def _safe_optional_float(value: Optional[float]) -> Optional[float]:
+	return float(value) if value is not None else None
+
+
+def ai_extracted_to_receipt_create(
+	extracted: ReceiptAIExtracted,
+	user_id: UUID
+) -> ReceiptCreate:
+	"""
+	Transforms AI extracted data into a ReceiptCreate payload.
+	This ensures required numeric fields fall back to sensible defaults and
+	populates minimal item data when available.
+	"""
+	item_total = 0.0
+	items: List[ReceiptItemCreate] = []
+
+	for item in extracted.items or []:
+		price = _safe_float(item.price)
+		item_total += price
+
+		variations = []
+		for variation in item.variations or []:
+			if variation.price is None:
+				continue
+			variations.append(
+				ReceiptItemVariationCreate(
+					name=variation.name or "Variation",
+					price=_safe_float(variation.price)
+				)
+			)
+
+		items.append(
+			ReceiptItemCreate(
+				name=item.name or "Item",
+				quantity=1.0,
+				unit_price=price,
+				total_price=price,
+				variations=variations or None
+			)
+		)
+
+	subtotal = _safe_float(extracted.subtotal, item_total)
+	total_amount = _safe_float(
+		extracted.total_amount,
+		item_total if item_total else subtotal
+	)
+
+	return ReceiptCreate(
+		user_id=user_id,
+		restaurant_name=extracted.restaurant_name or "Unknown Restaurant",
+		subtotal=subtotal,
+		tax=_safe_optional_float(extracted.tax),
+		service_charge=_safe_optional_float(extracted.service_charge),
+		tip=_safe_optional_float(extracted.tip),
+		rounding_amount=_safe_optional_float(extracted.rounding_amount),
+		discount=_safe_optional_float(extracted.discount),
+		total_amount=total_amount,
+		receipt_url=extracted.receipt_url,
+		notes=extracted.notes,
+		items=items or None
+	)

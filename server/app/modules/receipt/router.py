@@ -1,7 +1,9 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, UploadFile, File
 from app.core.responses import APIResponse
 from app.dependencies.auth import get_current_user
+from app.dependencies.file import get_file_service
+from app.modules.ai.service import AIService, get_ai_service
 from app.modules.receipt.schema import (
 	ReceiptCreate,
 	ReceiptParticipantCreate,
@@ -48,6 +50,29 @@ def create_receipt(
 	return APIResponse.success(
 		message="Receipt created successfully.",
 		data=created_receipt
+	)
+
+@router.post("/extract")
+async def extract_receipt(
+	receipt_image: UploadFile = File(...),
+	ai_service: AIService = Depends(get_ai_service),
+	receipt_service: ReceiptService = Depends(get_receipt_service),
+	current_user=Depends(get_current_user),
+):
+	file_service = get_file_service()
+	receipt_image.file.seek(0)
+	stored_receipt_key = file_service.upload_file(receipt_image, "receipts")
+	receipt_image.file.seek(0)
+
+	saved_receipt = await ai_service.extract_and_store_receipt(
+		receipt_image=receipt_image,
+		user_id=current_user.id,
+		receipt_service=receipt_service,
+		receipt_url=stored_receipt_key
+	)
+	return APIResponse.success(
+		message="Receipt extracted and saved successfully.",
+		data=saved_receipt
 	)
 
 @router.put("/{receipt_id}")

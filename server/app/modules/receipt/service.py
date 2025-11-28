@@ -18,7 +18,9 @@ from app.modules.receipt.schema import (
 	ReceiptParticipantCreate,
 	ReceiptItemCreate,
 	ReceiptItemFriendCreate,
-	ReceiptItemVariationCreate
+	ReceiptItemVariationCreate,
+	ReceiptAIExtracted,
+	ai_extracted_to_receipt_create
 )
 
 
@@ -85,6 +87,13 @@ class ReceiptService:
 		self.db.commit()
 		self.db.refresh(receipt)
 		return ReceiptRead.model_validate(receipt).model_dump()
+
+	def create_from_ai_extract(self, user_id: UUID, extracted: ReceiptAIExtracted):
+		receipt_payload = ai_extracted_to_receipt_create(
+			extracted=extracted,
+			user_id=user_id
+		)
+		return self.create(data=receipt_payload)
 
 	def _add_item(self, receipt_id: UUID, data: ReceiptItemCreate):
 		item = ReceiptItem(
