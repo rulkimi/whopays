@@ -2,7 +2,7 @@ from fastapi import Depends, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, verify_password, decode_refresh_token
 from app.dependencies.database import get_db
 from app.modules.user.schema import UserCreate, UserRead
 from app.modules.user.service import get_user_service
@@ -39,6 +39,34 @@ class AuthService:
 		token = create_access_token({"sub": str(user.id)})
 		user_json = UserRead.model_validate(user).model_dump()
 		return {"user": user_json, **token}
+
+	def refresh_token(self, refresh_token: str):
+		try:
+			payload = decode_refresh_token(refresh_token)
+			user_id = payload.get("sub")
+			if not user_id:
+				raise AppException(message="Invalid refresh token.", code=401)
+			
+			user = self.db.query(User).filter(User.id == user_id).first()
+			if not user:
+				raise AppException(message="User not found.", code=401)
+			
+			user_json = UserRead.model_validate(user).model_dump()
+
+			access_token_data = create_access_token({"sub": str(user.id)})
+			result = {
+				"user": user_json,
+				"access_token": access_token_data["access_token"],
+				"access_token_expiry": access_token_data["access_token_expiry"],
+				"refresh_token": refresh_token,
+				"refresh_token_expiry": payload.get("exp"),
+			}
+			return result
+
+		except AppException as e:
+			raise e
+		except Exception:
+			raise AppException(message="Invalid or expired refresh token.", code=401)
 
 def get_auth_service(db: Session = Depends(get_db)):
 	return AuthService(db)

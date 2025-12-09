@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.post("/register")
 def register_user(
-	user_data: UserCreate = Depends(UserCreate),
+	user_data: UserCreate = Depends(UserCreate.as_form),
   profile_photo: UploadFile = None,
 	auth_service: AuthService = Depends(get_auth_service)
 ):
@@ -46,4 +46,22 @@ def login_user(
       message="User logged in successfully",
       data=login_data,
       code=status.HTTP_200_OK
+    )
+
+@router.post("/refresh")
+def refresh_access_token(
+  refresh_token: str = Query(..., description="Refresh token"),
+  auth_service: AuthService = Depends(get_auth_service)
+):
+  try:
+    refreshed_data = auth_service.refresh_token(refresh_token)
+    return APIResponse.success(
+      message="Access token refreshed successfully",
+      data=refreshed_data,
+      code=status.HTTP_200_OK
+    )
+  except Exception as e:
+    return APIResponse.error(
+      message=str(e),
+      code=status.HTTP_401_UNAUTHORIZED
     )

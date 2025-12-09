@@ -31,3 +31,17 @@ def create_access_token(data: dict, expires_delta: int = None):
     "refresh_token": refresh_token,
     "refresh_token_expiry": refresh_expire
   }
+
+def decode_refresh_token(token: str) -> dict:
+  try:
+    payload = jwt.decode(
+      token,
+      settings.JWT_SECRET_KEY,
+      algorithms=[settings.JWT_ALGORITHM],
+      options={"verify_exp": True}
+    )
+    if payload.get("type") != "refresh":
+      raise Exception("Token type is not 'refresh'")
+    return payload
+  except Exception as e:
+    raise Exception("Invalid or expired refresh token") from e
