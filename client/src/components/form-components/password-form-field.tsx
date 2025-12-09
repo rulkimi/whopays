@@ -50,7 +50,7 @@ export function PasswordFormField<T extends FieldValues>({
             onClick={() => setShow((v) => !v)}
             aria-label={show ? "Hide password" : "Show password"}
           >
-            {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {show ? <EyeOff /> : <Eye />}
           </InputGroupButton>
         </InputGroup>
       )}

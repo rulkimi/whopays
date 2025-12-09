@@ -20,6 +20,7 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import RequiredAsterisk from "./required-asterisk";
 import { AnimatePresence, motion } from "motion/react";
+import { InputGroup, InputGroupButton, InputGroupInput } from "../ui/input-group";
 
 /* ----------------------------- Motion Variants ---------------------------- */
 
@@ -119,21 +120,41 @@ export function CommonFormField<T extends FieldValues>({
 /* ----------------------------- Input Variants ----------------------------- */
 
 export function InputFormField<T extends FieldValues>(
-	props: BaseFormFieldProps<T> & { placeholder?: string; disabled?: boolean }
+  props: BaseFormFieldProps<T> & { placeholder?: string; disabled?: boolean; append?: ReactNode }
 ) {
-	return (
-		<CommonFormField
-			{...props}
-			render={(field) => (
-				<Input
-					{...field}
-          id={props.name}
-					placeholder={props.placeholder}
-					disabled={props.disabled}
-				/>
-			)}
-		/>
-	);
+  const { placeholder, disabled, append, name } = props;
+
+  return (
+    <CommonFormField
+      {...props}
+      render={(field) => {
+        if (append) {
+          return (
+            <InputGroup>
+              <InputGroupInput
+                {...field}
+                id={name}
+                placeholder={placeholder}
+                disabled={disabled}
+              />
+              <InputGroupButton>
+                {append}
+              </InputGroupButton>
+            </InputGroup>
+          );
+        } else {
+          return (
+            <Input
+              {...field}
+              id={name}
+              placeholder={placeholder}
+              disabled={disabled}
+            />
+          );
+        }
+      }}
+    />
+  );
 }
 
 export function NumberFormField<T extends FieldValues>(
