@@ -1,4 +1,4 @@
-import { User } from "./data";
+import { AuthData, User } from "./data";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -9,3 +9,4 @@ export interface ApiResponse<T> {
 
 // auth
 export type UserRegisteredResponse = ApiResponse<User>;
+export type UserLoggedInResponse = ApiResponse<AuthData>;

@@ -21,8 +21,6 @@ const registerSchema = z.object({
   profile_photo: z.instanceof(File, { message: "Profile photo is required"})
 });
 
-
-
 export type RegisterValues = z.infer<typeof registerSchema>;
  
 export default function RegisterForm() {
