@@ -1,8 +1,12 @@
-import type { LucideProps, LucideIcon } from "lucide-react";
+import { type LucideProps, type LucideIcon, DollarSign, TrendingUp, Users, Home } from "lucide-react";
 
 export type Icon = LucideIcon;
 
 export const Icons = {
+  "dollar-sign": DollarSign,
+  "trending-up": TrendingUp,
+  users: Users,
+  home: Home,
   whatsapp: (props: LucideProps) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"

@@ -6,6 +6,7 @@ import { PasswordFormField } from "@/components/form-components/password-form-fi
 import { AppButton } from "@/components/ui-overide/app-button";
 import { Form } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -20,6 +21,8 @@ export type LoginValues = z.infer<typeof loginSchema>;
  
 export default function LoginForm() {
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -35,6 +38,7 @@ export default function LoginForm() {
       toast.error(result.message);
     } else {
       toast.success(result.message);
+      router.push("/home");
     }
     setLoading(false);
   };

@@ -8,6 +8,7 @@ import { AppButton } from "@/components/ui-overide/app-button";
 import { Form } from "@/components/ui/form";
 import { generateUsernameSuggestion } from "@/lib/string";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -25,6 +26,8 @@ export type RegisterValues = z.infer<typeof registerSchema>;
  
 export default function RegisterForm() {
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -51,7 +54,8 @@ export default function RegisterForm() {
     if (!result.success) {
       toast.error(result.message);
     } else {
-      toast.success(result.message);
+      router.push("/login")
+      toast.success("User registered successfully. Please login.");
     }
     setLoading(false);
   };
