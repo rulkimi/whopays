@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import Link from "next/link";
 import { IconName, Icons } from "./icons";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface NavMenu {
   url: string;
   label: string;
-  icon: IconName
+  icon: IconName;
 }
 
 const NAV_MENUS: NavMenu[] = [
@@ -18,20 +18,20 @@ const NAV_MENUS: NavMenu[] = [
     icon: "home",
   },
   {
-    url: "/bills",
-    label: "Bills",
-    icon: "dollar-sign"
+    url: "/receipts",
+    label: "Receipts",
+    icon: "dollar-sign",
   },
   {
     url: "/friends",
     label: "Friends",
-    icon: "users"
+    icon: "users",
   },
   {
     url: "/stats",
     label: "Statistics",
-    icon: "trending-up"
-  }
+    icon: "trending-up",
+  },
 ];
 
 export default function AppHeader() {
@@ -48,7 +48,7 @@ export default function AppHeader() {
       )}
     >
       <nav className="flex justify-between gap-2 md:gap-4">
-        {NAV_MENUS.map(menu => {
+        {NAV_MENUS.map((menu) => {
           const Icon = Icons[menu.icon];
           const isActive = pathname === menu.url;
           return (
@@ -65,9 +65,9 @@ export default function AppHeader() {
               <Icon className="size-5 md:size-4" />
               <span>{menu.label}</span>
             </Link>
-          )
+          );
         })}
       </nav>
     </header>
-  )
+  );
 }

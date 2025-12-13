@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel
@@ -116,6 +117,8 @@ class ReceiptRead(ReceiptBase):
 	user_id: UUID
 	participants: List[ReceiptParticipantRead] = []
 	items: List[ReceiptItemRead] = []
+	created_at: datetime
+	updated_at: datetime
 
 	class Config:
 		from_attributes = True
